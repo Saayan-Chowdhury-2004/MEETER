@@ -20,6 +20,9 @@ blocked_actions:
   - purchase
   - account_setting_change
 
+# NOTE: link DETECTION is domain-agnostic — every URL seen in the meeting is
+# captured as a NEW_URL event and logged with a JSON payload. This allowlist
+# only gates ACTIONS (open_url etc.), never what gets noticed or recorded.
 allowed_domains:
   - github.com
   - docs.google.com

@@ -1,13 +1,31 @@
 # Structured rules evaluated by the rules engine (spec §20).
+#
+# Detection is domain-agnostic: EVERY link that appears in the meeting is
+# captured as a NEW_URL event and recorded in the event log (JSON payload
+# in SQLite). The rules below decide only whether the agent may ACT on a
+# link — they do not affect what is noticed or stored.
 rules:
-  - id: open_github_links
-    name: open_github_links
-    enabled: true
+  # Generic: open any link shared in the meeting chat (confirmation-gated).
+  - id: open_shared_links
+    name: open_shared_links
+    enabled: false          # opt-in; observe mode never executes anyway
     trigger: NEW_URL
     conditions:
-      domain: github.com
       source: meeting_chat
     action:
       type: open_url
     risk: low
-    requires_confirmation: false
+    requires_confirmation: true
+
+  # Domain-scoped variant — uncomment and edit if you want it:
+  # - id: open_github_links
+  #   name: open_github_links
+  #   enabled: true
+  #   trigger: NEW_URL
+  #   conditions:
+  #     domain: github.com
+  #     source: meeting_chat
+  #   action:
+  #     type: open_url
+  #   risk: low
+  #   requires_confirmation: false

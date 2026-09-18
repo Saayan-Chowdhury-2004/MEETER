@@ -61,6 +61,22 @@ vlm:
 rules:
   file: config/rules.yaml
 
+# Cross-device awareness — ROADMAP SCAFFOLD (not wired to a transport yet).
+# When implemented: while you are away, the agent pings another device about
+# "interesting" meeting moments and can accept follow-up instructions from
+# that device (automation guided by the local Ollama model).
+notify:
+  enabled: false
+  interesting_events:          # which events count as "interesting"
+    - NEW_URL
+    - NEW_MESSAGE
+    - BUTTON_APPEARED
+    - MEETING_STATE_CHANGED
+  transport: none              # future: ntfy | pushover | webhook
+  topic_url: ""                # e.g. https://ntfy.sh/<your-private-topic>
+  only_when_away: true         # ping only when no recent user input locally
+  ollama_relay: false          # future: remote follow-up commands via Ollama
+
 policy:
   require_confirmation_for_unknown_domains: true
   allow_form_submission: false

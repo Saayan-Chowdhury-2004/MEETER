@@ -3,7 +3,7 @@
 A local-first, open-source **computer-use observer agent** for Windows. It watches your
 screen from outside the meeting application (Google Meet / Teams / Zoom / anything),
 detects important events as they happen, and can perform **pre-authorized** actions —
-like opening GitHub links posted in the meeting chat — without any meeting-platform
+like opening a link shared in the meeting chat — without any meeting-platform
 integration, cloud AI, subscriptions, or paid APIs.
 
 > Think of it as a cautious third person sitting beside you during an 8-hour meeting:
@@ -29,6 +29,9 @@ capture (meeting window only) → change detection → ROI routing → OCR / det
   (URLs, buttons, messages).
 - **Rules** (deterministic) resolve most events. The **local VLM** (Qwen3-VL via Ollama/llama.cpp)
   is called only when semantics are ambiguous.
+- **Every link is captured, not just one provider's**: any URL appearing in the meeting
+  becomes a `NEW_URL` event in the JSON event log; rules decide only whether the agent
+  may *act* on it (domain allowlist + firewall still gate execution).
 - Every action passes the **Action Firewall** (10 checks, spec §16) before execution,
   and is **verified** afterwards.
 - Visual frames live in a **60-second RAM ring buffer** and expire automatically.
@@ -71,12 +74,20 @@ Or use the scripts: `powershell -File scripts\setup.ps1`, then `scripts\start.ps
 Kill switch: `Ctrl+Alt+Shift+M` (configurable) halts all autonomous actions immediately,
 outside the AI loop. The dashboard also has an EMERGENCY STOP button.
 
+## Roadmap
+
+- **Cross-device awareness:** when you're away, the agent pings another device
+  (e.g. your phone via a private ntfy topic) about "interesting" meeting moments —
+  new links, questions directed at you, pending action proposals — and later accepts
+  follow-up instructions from that device, with task planning aided by the local
+  Ollama model. Scaffolded in config (`notify:` section), not enabled in V1.
+
 ## Configuration
 
 - `config/default.yaml` — agent, capture, regions, OCR, VLM, policy, API.
 - `config/policies.yaml` — risk classes, mode capabilities, domain/app allowlists.
 - `config/rules.yaml` — structured rules; editable, or add via dashboard/API:
-  `"Open every GitHub link posted in chat"` is compiled to a validated rule
+  `"Open links posted in chat"` is compiled to a validated rule
   (local LLM when available, deterministic pattern compiler otherwise — never arbitrary code).
 
 ## Default safety posture

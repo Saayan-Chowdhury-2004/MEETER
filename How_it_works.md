@@ -32,7 +32,7 @@ OCR (PaddleOCR reads the text)  →  regex finds URLs/buttons
 EVENTS  (NEW_URL, NEW_MESSAGE, BUTTON_APPEARED… structured JSON)
       │
       ▼
-RULES  ("open github.com links from chat")  ── matched? ── yes → action proposal
+RULES  ("open links from chat")  ── matched? ── yes → action proposal
       │ no match / ambiguous
       ▼
 VLM (Qwen3-VL via Ollama, optional)  → action proposal

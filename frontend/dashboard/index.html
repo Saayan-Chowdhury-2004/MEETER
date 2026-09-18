@@ -75,6 +75,14 @@
   .ev-time { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tag { font-size: 10px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); }
   .tag.NEW_URL { color: var(--accent); border-color: #2b4a6e; }
+  .tag.NOTIFICATION_APPEARED { color: #c792ea; border-color: #5a3d70; }
+  .roadmap-note { font-size: 11.5px; color: var(--muted); margin-top: 8px; line-height: 1.45; }
+  .roadmap-note b { color: var(--text); }
+  .svc { display: flex; gap: 8px; align-items: baseline; margin: 6px 0; }
+  .svc .name { font-weight: 600; min-width: 86px; }
+  .svc .val { color: var(--muted); font-size: 12px; word-break: break-all; }
+  .svc .val.enabled { color: var(--ok); }
+  .svc .val.disabled { color: var(--warn); }
   .tag.MEETING_STATE_CHANGED { color: var(--warn); border-color: #6e5a2f; }
   .tag.SCREEN_CHANGED { color: var(--muted); }
   .muted { color: var(--muted); }
@@ -154,10 +162,11 @@
         <h2>Events</h2>
         <div class="filters" id="filters">
           <button data-f="all" class="active">All</button>
-          <button data-f="NEW_URL">URLs</button>
+          <button data-f="NEW_URL">Links (all)</button>
           <button data-f="NEW_MESSAGE">Messages</button>
           <button data-f="MEETING_STATE_CHANGED">Meetings</button>
         </div>
+        <div class="muted" style="font-size:11px; margin-bottom:6px">Every link shared in the meeting is captured here regardless of domain — the rule on the right only decides whether the agent may act on it.</div>
         <table>
           <tbody id="events"><tr><td class="muted">no events yet</td></tr></tbody>
         </table>
@@ -169,9 +178,16 @@
         <h2>Rules</h2>
         <div id="rules"><div class="muted">loading…</div></div>
         <div class="cmd">
-          <input id="rule-instruction" placeholder='Add rule: "Open every GitHub link posted in chat"'>
+          <input id="rule-instruction" placeholder='Tell the agent what to do, e.g. "open links posted in chat"'>
           <button onclick="addRule()">Add</button>
         </div>
+      </div>
+      <div class="card">
+        <h2>Automation brain</h2>
+        <div class="svc"><span class="name">Rules</span><span class="val">deterministic — always on, zero latency</span></div>
+        <div class="svc"><span class="name">Ollama</span><span id="svc-vlm" class="val">checking…</span></div>
+        <div class="svc"><span class="name">STT</span><span id="svc-stt" class="val">checking…</span></div>
+        <div class="roadmap-note"><b>Roadmap — cross-device awareness:</b> when you step away, the agent can ping another device about “interesting” meeting moments (new links, questions addressed to you, action proposals) and accept follow-up instructions from that device — automation guided by the local model. Needs a companion relay + notification channel; not enabled in V1.</div>
       </div>
       <div class="card">
         <h2>Command</h2>
@@ -233,6 +249,19 @@ async function refresh() {
     document.getElementById("st-cpu").innerHTML = (st.cpu_percent ?? 0).toFixed(0) + " <small>%</small>";
     document.getElementById("st-ram").innerHTML = (st.ram_mb ?? 0).toFixed(0) + " <small>MB</small>";
     document.getElementById("st-uptime").textContent = fmtUptime(st.uptime_seconds);
+
+    // automation brain card
+    const vlmEl = document.getElementById("svc-vlm");
+    if (st.vlm && st.vlm.enabled) {
+      vlmEl.textContent = `enabled — ${st.vlm.provider || "local"} · ${st.vlm.model || "local model"}`;
+      vlmEl.className = "val enabled";
+    } else {
+      vlmEl.textContent = "not configured — deterministic rules only";
+      vlmEl.className = "val disabled";
+    }
+    const sttEl = document.getElementById("svc-stt");
+    if (st.speech && st.speech.enabled) { sttEl.textContent = "enabled"; sttEl.className = "val enabled"; }
+    else { sttEl.textContent = "disabled"; sttEl.className = "val disabled"; }
 
     // modes
     document.querySelectorAll(".modes button").forEach(b =>

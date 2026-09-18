@@ -69,6 +69,8 @@ def status():
     data = a.state.model_dump()
     data["uptime_seconds"] = _uptime(a)
     data["pending_confirmations"] = len(a._pending_confirmations)
+    data["vlm"] = {"enabled": a.config.vlm.enabled, "provider": a.config.vlm.provider, "model": a.config.vlm.model}
+    data["speech"] = {"enabled": a.config.speech.enabled}
     return data
 
 

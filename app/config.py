@@ -111,6 +111,24 @@ class SpeechConfig(BaseModel):
     device: str = "cpu"
 
 
+class NotifyConfig(BaseModel):
+    """Cross-device awareness (roadmap scaffold).
+
+    Not wired to any transport yet. When implemented, `on` events will ping
+    the user's other device about interesting meeting moments, and the relay
+    will carry follow-up instructions back to the agent.
+    """
+
+    enabled: bool = False
+    interesting_events: List[str] = Field(
+        default_factory=lambda: ["NEW_URL", "NEW_MESSAGE", "BUTTON_APPEARED", "MEETING_STATE_CHANGED"]
+    )
+    transport: str = "none"  # future: ntfy | pushover | webhook
+    topic_url: str = ""      # e.g. https://ntfy.sh/<your-private-topic>
+    only_when_away: bool = True
+    ollama_relay: bool = False  # future: accept follow-up commands from remote device
+
+
 class KillSwitchConfig(BaseModel):
     hotkey: str = "ctrl+alt+shift+m"
 
@@ -140,6 +158,7 @@ class AppConfig(BaseModel):
     policy: PolicyConfig = Field(default_factory=PolicyConfig)
     automation: AutomationConfig = Field(default_factory=AutomationConfig)
     speech: SpeechConfig = Field(default_factory=SpeechConfig)
+    notify: NotifyConfig = Field(default_factory=NotifyConfig)
     kill_switch: KillSwitchConfig = Field(default_factory=KillSwitchConfig)
     api: ApiConfig = Field(default_factory=ApiConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)

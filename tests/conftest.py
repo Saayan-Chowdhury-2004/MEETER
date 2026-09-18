@@ -61,5 +61,25 @@ def test_agent(tmp_db):
         "app.agent.get_grounding_provider", return_value=MockGroundingProvider()
     ), patch("app.agent.get_vlm_provider", return_value=MockVLMProvider()):
         agent = Agent(cfg, tmp_db)
+
+    # Tests must not depend on the repo's config/rules.yaml contents (which are
+    # user-editable and now default to opt-in). Add the rule these tests expect.
+    from app.rules.schema import validate_rule_dict
+
+    ok, err, rule = validate_rule_dict(
+        {
+            "id": "open_github_links",
+            "name": "open_github_links",
+            "enabled": True,
+            "trigger": "NEW_URL",
+            "conditions": {"domain": "github.com", "source": "meeting_chat"},
+            "action": {"type": "open_url"},
+            "risk": "low",
+            "requires_confirmation": False,
+        }
+    )
+    assert ok, err
+    agent.rules.add_rule(rule)
+
     # no capture in most tests; tick() not exercised here
     return agent
