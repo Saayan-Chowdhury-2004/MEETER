@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meeting Agent</title>
+<style>
+  :root {
+    --bg: #0f141b; --panel: #171e29; --panel2: #1d2634; --border: #2a3547;
+    --text: #dbe4f0; --muted: #8494ab; --accent: #4f9cf9;
+    --ok: #3ecf8e; --warn: #f5a623; --bad: #e5484d; --live: #ff4d4f;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    padding: 20px; max-width: 1100px; margin: 0 auto;
+    font-size: 14px;
+  }
+  header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  h1 { font-size: 18px; font-weight: 600; }
+  .pill {
+    padding: 3px 12px; border-radius: 999px; font-size: 12px; font-weight: 600;
+    border: 1px solid var(--border); display: inline-flex; align-items: center; gap: 6px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .pill.live .dot { background: var(--live); box-shadow: 0 0 6px var(--live); animation: pulse 1.5s infinite; }
+  .pill.idle .dot { background: var(--muted); }
+  .pill.paused .dot { background: var(--warn); }
+  .pill.stopped .dot { background: var(--bad); }
+  @keyframes pulse { 50% { opacity: 0.4; } }
+  .pill.meeting-live { border-color: #6e2f33; color: #ffb3b5; background: #2a1416; }
+  .spacer { flex: 1; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .stat .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+  .stat .value { font-size: 18px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .stat .value small { font-size: 11px; color: var(--muted); }
+
+  .cols { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; }
+  @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  .card h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+
+  .meeting-box { display: flex; align-items: center; gap: 12px; }
+  .meeting-icon { font-size: 26px; }
+  .meeting-name { font-weight: 600; font-size: 15px; }
+  .meeting-title { color: var(--muted); font-size: 12px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 480px; }
+  .standby { color: var(--muted); font-size: 13px; padding: 6px 0; }
+
+  .proposal { border-left: 3px solid var(--accent); padding: 8px 12px; background: var(--panel2); border-radius: 6px; margin-bottom: 10px; }
+  .proposal .what { font-weight: 600; }
+  .proposal .why { color: var(--muted); font-size: 12px; margin: 4px 0 8px; }
+  .actions { display: flex; gap: 8px; }
+  button {
+    border: 1px solid var(--border); background: #232d3f; color: var(--text);
+    padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px;
+  }
+  button.allow { background: #16352a; border-color: #2b5e46; color: var(--ok); }
+  button.block { background: #3a1c1e; border-color: #6e2f33; color: var(--bad); }
+  button.danger { background: #3a1c1e; border-color: #6e2f33; color: var(--bad); font-weight: 600; }
+  button:hover { filter: brightness(1.15); }
+  .modes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .modes button { padding: 5px 10px; font-size: 12px; }
+  .modes button.active { outline: 2px solid var(--accent); }
+
+  .filters { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .filters button { padding: 3px 10px; font-size: 11px; border-radius: 999px; }
+  .filters button.active { outline: 1.5px solid var(--accent); color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+  td.url { color: var(--accent); word-break: break-all; }
+  .ev-time { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tag { font-size: 10px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); }
+  .tag.NEW_URL { color: var(--accent); border-color: #2b4a6e; }
+  .tag.MEETING_STATE_CHANGED { color: var(--warn); border-color: #6e5a2f; }
+  .tag.SCREEN_CHANGED { color: var(--muted); }
+  .muted { color: var(--muted); }
+
+  .rule { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .rule:last-child { border-bottom: none; }
+  .rule .name { font-weight: 600; }
+  .rule .detail { color: var(--muted); font-size: 11.5px; }
+  .rule .spacer { flex: 1; }
+  .switch { position: relative; width: 34px; height: 18px; flex-shrink: 0; cursor: pointer; }
+  .switch input { display: none; }
+  .switch .track { position: absolute; inset: 0; background: #333f52; border-radius: 999px; transition: .15s; }
+  .switch .thumb { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #aab8cc; transition: .15s; }
+  .switch input:checked + .track { background: #1f4d38; }
+  .switch input:checked + .track .thumb, .switch input:checked ~ .thumb { left: 18px; background: var(--ok); }
+
+  .cmd { display: flex; gap: 8px; margin-top: 10px; }
+  .cmd input {
+    flex: 1; background: #0a0e14; border: 1px solid var(--border); border-radius: 8px;
+    padding: 7px 10px; color: var(--text); font-size: 13px;
+  }
+  #toast {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Meeting Agent</h1>
+    <span id="status-pill" class="pill idle"><span class="dot"></span><span id="status-text">STARTING</span></span>
+    <span id="meeting-pill" class="pill" style="display:none"><span class="dot"></span><span id="meeting-text"></span></span>
+    <div class="spacer"></div>
+    <div class="modes">
+      <button data-mode="observe">Observe</button>
+      <button data-mode="suggest">Suggest</button>
+      <button data-mode="assist">Assist</button>
+      <button data-mode="autonomous">Autonomous</button>
+    </div>
+    <button class="danger" onclick="post('/emergency-stop')">STOP</button>
+  </header>
+
+  <div class="grid">
+    <div class="stat"><div class="label">Meeting</div><div class="value" id="st-meeting">—</div></div>
+    <div class="stat"><div class="label">Events</div><div class="value" id="st-events">0</div></div>
+    <div class="stat"><div class="label">Pending</div><div class="value" id="st-pending">0</div></div>
+    <div class="stat"><div class="label">OCR calls</div><div class="value" id="st-ocr">0</div></div>
+    <div class="stat"><div class="label">CPU</div><div class="value" id="st-cpu">— <small>%</small></div></div>
+    <div class="stat"><div class="label">RAM</div><div class="value" id="st-ram">— <small>MB</small></div></div>
+    <div class="stat"><div class="label">Uptime</div><div class="value" id="st-uptime">—</div></div>
+  </div>
+
+  <div class="cols">
+    <div>
+      <div class="card">
+        <h2>Current activity</h2>
+        <div id="meeting-box">
+          <div class="standby">No meeting detected — standing by (near-zero resource use).</div>
+        </div>
+      </div>
+
+      <div class="card" id="proposal-card" style="display:none">
+        <h2>Proposed action</h2>
+        <div class="proposal">
+          <div class="what" id="prop-what"></div>
+          <div class="why" id="prop-why"></div>
+          <div class="actions">
+            <button class="allow" onclick="confirmAction()">ALLOW</button>
+            <button class="block" onclick="rejectAction()">BLOCK</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Events</h2>
+        <div class="filters" id="filters">
+          <button data-f="all" class="active">All</button>
+          <button data-f="NEW_URL">URLs</button>
+          <button data-f="NEW_MESSAGE">Messages</button>
+          <button data-f="MEETING_STATE_CHANGED">Meetings</button>
+        </div>
+        <table>
+          <tbody id="events"><tr><td class="muted">no events yet</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h2>Rules</h2>
+        <div id="rules"><div class="muted">loading…</div></div>
+        <div class="cmd">
+          <input id="rule-instruction" placeholder='Add rule: "Open every GitHub link posted in chat"'>
+          <button onclick="addRule()">Add</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Command</h2>
+        <div class="cmd" style="margin-top:0">
+          <input id="cmd-input" placeholder='"what did you detect?"'>
+          <button onclick="sendCommand()">Send</button>
+        </div>
+        <div id="cmd-result" class="muted" style="font-size:12px; margin-top:8px; white-space:pre-wrap;"></div>
+      </div>
+      <div class="card">
+        <h2>Controls</h2>
+        <div class="actions" style="flex-wrap: wrap;">
+          <button onclick="post('/pause')">Pause</button>
+          <button onclick="post('/resume')">Resume</button>
+        </div>
+        <div class="muted" style="font-size:11px; margin-top:8px">Kill switch: Ctrl+Alt+Shift+M · API bound to 127.0.0.1</div>
+      </div>
+    </div>
+  </div>
+
+<div id="toast"></div>
+<script>
+let currentEventId = null, filter = "all", eventCache = [];
+
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+async function refresh() {
+  try {
+    const st = await (await fetch("/status")).json();
+
+    // status pill
+    const pill = document.getElementById("status-pill");
+    const stTxt = document.getElementById("status-text");
+    let cls = "pill idle", txt = st.status ? st.status.toUpperCase() : "—";
+    if (st.emergency_stop) { cls = "pill stopped"; txt = "EMERGENCY STOP"; }
+    else if (st.status === "running" && st.meeting_active) { cls = "pill live"; txt = "OBSERVING MEETING"; }
+    else if (st.status === "running") { cls = "pill idle"; txt = "STANDBY (no meeting)"; }
+    else if (st.status === "paused") { cls = "pill paused"; txt = "PAUSED"; }
+    else if (st.status === "degraded") { cls = "pill stopped"; txt = "DEGRADED"; }
+    pill.className = cls; stTxt.textContent = txt;
+
+    // meeting pill
+    const mp = document.getElementById("meeting-pill");
+    if (st.meeting_active) {
+      mp.style.display = ""; mp.className = "pill meeting-live";
+      document.getElementById("meeting-text").textContent =
+        (st.meeting_app || "meeting").toUpperCase() + " — LIVE";
+    } else mp.style.display = "none";
+
+    // stats
+    document.getElementById("st-meeting").textContent = st.meeting_active ? (st.meeting_app || "yes") : "none";
+    document.getElementById("st-events").textContent = st.events_seen;
+    document.getElementById("st-pending").textContent = st.pending_confirmations ?? 0;
+    document.getElementById("st-ocr").textContent = st.ocr_calls;
+    document.getElementById("st-cpu").innerHTML = (st.cpu_percent ?? 0).toFixed(0) + " <small>%</small>";
+    document.getElementById("st-ram").innerHTML = (st.ram_mb ?? 0).toFixed(0) + " <small>MB</small>";
+    document.getElementById("st-uptime").textContent = fmtUptime(st.uptime_seconds);
+
+    // modes
+    document.querySelectorAll(".modes button").forEach(b =>
+      b.classList.toggle("active", b.dataset.mode === st.mode));
+
+    // meeting box
+    const box = document.getElementById("meeting-box");
+    if (st.meeting_active) {
+      box.innerHTML = `<div class="meeting-box"><div class="meeting-icon">🎥</div><div>
+        <div class="meeting-name">${esc(st.meeting_app || "meeting")}</div>
+        <div class="meeting-title">${esc(st.meeting_title || "")}</div>
+        <div class="meeting-title">Observing the meeting window only · ${st.frames_in_buffer} frames buffered</div>
+      </div></div>`;
+    } else {
+      box.innerHTML = `<div class="standby">No meeting detected — standing by (near-zero resource use).</div>`;
+    }
+
+    // proposal
+    const pc = document.getElementById("proposal-card");
+    const prop = st.last_proposal, dec = st.last_decision;
+    if (st.pending_confirmations > 0 && prop && prop.action) {
+      currentEventId = st.current_event ? st.current_event.id : null;
+      pc.style.display = "";
+      document.getElementById("prop-what").textContent =
+        prop.action.type + " " + (prop.action.url || prop.action.target || prop.action.application || "");
+      document.getElementById("prop-why").textContent =
+        (dec && dec.reason) || prop.reason || "";
+    } else pc.style.display = "none";
+
+    // events
+    eventCache = await (await fetch("/events?limit=60")).json();
+    renderEvents();
+    document.querySelectorAll(".filters button").forEach(b =>
+      b.onclick = () => {
+        filter = b.dataset.f;
+        document.querySelectorAll(".filters button").forEach(x => x.classList.toggle("active", x === b));
+        renderEvents();
+      });
+
+    // rules
+    const r = await (await fetch("/rules")).json();
+    const rlist = document.getElementById("rules");
+    const rules = r.rules || [];
+    rlist.innerHTML = rules.length ? rules.map(ruleRow).join("") : '<div class="muted">no rules loaded</div>';
+    rlist.querySelectorAll("input[data-rule]").forEach(inp =>
+      inp.onchange = async () => {
+        const res = await (await fetch(`/rules/${inp.dataset.rule}/toggle`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: inp.checked })
+        })).json();
+        toast((inp.checked ? "Enabled: " : "Disabled: ") + inp.dataset.rule);
+      });
+  } catch (e) { /* api offline */ }
+}
+
+function ruleRow(line) {
+  // line format: "<id> [enabled|disabled] trigger=... conditions={...} action=..."
+  const m = line.match(/^(\S+)\s+\[(enabled|disabled)\]\s+(.*)$/);
+  if (!m) return `<div class="rule"><span class="name">${esc(line)}</span></div>`;
+  const id = m[1], on = m[2] === "enabled";
+  return `<div class="rule">
+    <label class="switch"><input type="checkbox" data-rule="${esc(id)}" ${on ? "checked" : ""}><span class="track"><span class="thumb"></span></span></label>
+    <div><div class="name">${esc(id)}</div><div class="detail">${esc(m[3])}</div></div>
+  </div>`;
+}
+
+function renderEvents() {
+  const tbody = document.getElementById("events");
+  const rows = eventCache.filter(e => filter === "all" || e.type === filter);
+  tbody.innerHTML = rows.length ? rows.map(e => {
+    const p = e.payload || {};
+    const detail = p.url ? `<span class="url">${esc(p.url)}</span>`
+      : esc((p.text || "").slice(0, 80));
+    return `<tr>
+      <td class="ev-time">${(e.timestamp || "").slice(11, 19)}</td>
+      <td><span class="tag ${e.type}">${shortType(e.type)}</span></td>
+      <td>${detail}</td>
+    </tr>`;
+  }).join("") : '<tr><td class="muted">nothing matches this filter</td></tr>';
+}
+
+function shortType(t) {
+  return t === "MEETING_STATE_CHANGED" ? "MEETING" : t.replace("NEW_", "").replace("_APPEARED", "").replace("SCREEN_CHANGED", "ACTIVITY");
+}
+
+function fmtUptime(s) {
+  if (s == null) return "—";
+  s = Math.floor(s);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s % 60}s` : `${s}s`;
+}
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+async function post(path, body) {
+  const r = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : null });
+  if (!r.ok) toast("request failed"); 
+  refresh();
+}
+async function confirmAction() { await post("/action/confirm", { event_id: currentEventId }); toast("action allowed"); }
+async function rejectAction() { await post("/action/reject", { event_id: currentEventId }); toast("action blocked"); }
+async function addRule() {
+  const v = document.getElementById("rule-instruction").value;
+  if (!v) return;
+  const r = await (await fetch("/rules", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ instruction: v }) })).json();
+  document.getElementById("rule-instruction").value = "";
+  document.getElementById("cmd-result").textContent = r.result || "";
+  refresh();
+}
+async function sendCommand() {
+  const v = document.getElementById("cmd-input").value;
+  if (!v) return;
+  const r = await (await fetch("/commands", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: v }) })).json();
+  document.getElementById("cmd-result").textContent = r.result || "";
+}
+refresh();
+setInterval(refresh, 2000);
+</script>
+</body>
+</html>

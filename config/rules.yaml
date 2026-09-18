@@ -1,0 +1,13 @@
+# Structured rules evaluated by the rules engine (spec §20).
+rules:
+  - id: open_github_links
+    name: open_github_links
+    enabled: true
+    trigger: NEW_URL
+    conditions:
+      domain: github.com
+      source: meeting_chat
+    action:
+      type: open_url
+    risk: low
+    requires_confirmation: false

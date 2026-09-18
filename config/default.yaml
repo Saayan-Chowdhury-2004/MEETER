@@ -1,0 +1,91 @@
+# Default configuration — OBSERVE-first, automation disabled.
+agent:
+  mode: observe              # observe | suggest | assist | autonomous
+  data_dir: data
+  emergency_stop: false
+
+capture:
+  source: monitor            # monitor | window | mock
+  monitor: 1                 # 1-based monitor index
+  fps: 2                     # capture rate WHILE a meeting is active
+  width: 0                   # 0 = native
+  height: 0
+
+# Meeting-gated observation (tasks 3+4): the agent idles until a known
+# meeting app is detected, then observes only that app's window.
+meeting:
+  enabled: true
+  poll_interval_idle: 2.0    # seconds between checks when no meeting
+  poll_interval_active: 5.0  # seconds between window re-checks in a meeting
+
+memory:
+  ring_buffer_seconds: 60
+  persist_frames: false
+
+regions:
+  - name: full_screen
+    box: [0.0, 0.0, 1.0, 1.0]   # fractions of the frame: x, y, w, h
+    priority: medium
+    polling_hz: 2
+  # Example ROI for a meeting chat panel on the right side:
+  # - name: meeting_chat
+  #   box: [0.70, 0.15, 0.30, 0.80]
+  #   priority: high
+  #   polling_hz: 5
+
+change_detection:
+  method: pixel_ratio        # pixel_ratio | phash
+  threshold: 0.002           # fraction of pixels changed (0.2%)
+  noise_band: 25             # grayscale diff below this counts as noise
+  min_region_area: 0.0005    # fraction of frame
+
+ocr:
+  enabled: true
+  provider: auto             # paddle | fallback | auto
+  language: en
+
+url_detection:
+  deduplicate: true
+
+grounding:
+  provider: ocr              # ocr | omniparser | mock
+
+vlm:
+  enabled: false             # deterministic-first; enable explicitly
+  provider: mock             # mock | ollama | llama_cpp
+  model: qwen3-vl
+  host: http://127.0.0.1:11434
+  confidence_threshold: 0.95
+  timeout_seconds: 30
+
+rules:
+  file: config/rules.yaml
+
+policy:
+  require_confirmation_for_unknown_domains: true
+  allow_form_submission: false
+  allow_file_deletion: false
+  allow_shell_commands: false
+  confidence_threshold: 0.95
+  max_action_retries: 1
+
+automation:
+  enabled: false
+  browser: default           # default | playwright
+  dry_run: false
+
+speech:
+  enabled: false
+  model: base.en
+  device: cpu
+
+kill_switch:
+  hotkey: ctrl+alt+shift+m
+
+api:
+  host: 127.0.0.1
+  port: 8765
+
+logging:
+  level: INFO
+  file: data/agent.log

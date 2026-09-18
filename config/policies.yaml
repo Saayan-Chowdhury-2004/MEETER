@@ -1,0 +1,50 @@
+# Policy configuration. Safety defaults per spec §17/§18.
+require_confirmation_for_unknown_domains: true
+allow_form_submission: false
+allow_file_deletion: false
+allow_shell_commands: false
+confidence_threshold: 0.95
+max_action_retries: 1
+
+mode_capabilities:
+  observe: []
+  suggest: []
+  assist: [open_url, switch_window, open_application, scroll]
+  autonomous: [open_url, click, type_text, key_press, scroll, open_application, switch_window, copy_text]
+
+blocked_actions:
+  - submit_form
+  - delete_file
+  - execute_shell
+  - send_email
+  - purchase
+  - account_setting_change
+
+allowed_domains:
+  - github.com
+  - docs.google.com
+  - forms.google.com
+  - drive.google.com
+  - notion.so
+
+blocked_domains: []
+
+allowed_apps:
+  vscode:
+    paths: ["code", "code.cmd"]
+  browser:
+    paths: []                 # empty = system default browser
+  calculator:
+    paths: ["calc.exe"]
+  notepad:
+    paths: ["notepad.exe"]
+  file_explorer:
+    paths: ["explorer.exe"]
+
+url_shorteners:
+  - bit.ly
+  - tinyurl.com
+  - t.co
+  - goo.gl
+  - is.gd
+  - cutt.ly

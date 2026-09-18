@@ -1,0 +1,26 @@
+# Core runtime (pinned). Verify exact license of each pinned version before distribution.
+pydantic==2.5.3
+PyYAML==6.0.1
+mss==9.0.1
+opencv-python==4.9.0.80
+numpy==1.26.4
+paddleocr==2.7.0.3
+Pillow==10.2.0
+pygetwindow==0.0.9
+psutil==5.9.8
+
+# Local control API + dashboard
+fastapi==0.104.1
+uvicorn[standard]==0.24.0.post1
+sse-starlette==1.8.0
+
+# Local automation (Windows)
+pyautogui==0.9.54
+pynput==1.7.6
+playwright==1.40.0
+
+# Local VLM provider (Ollama HTTP)
+requests==2.31.0
+
+# Optional local speech-to-text (install when needed)
+# faster-whisper==1.0.0
